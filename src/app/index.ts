@@ -62,10 +62,25 @@ export class Application {
   }
 
   public handleStaticFiles() {
-    this.app.use(express.static(path.join(__dirname, '..', '..', 'public')));
-    logger.print(chalk.green(LoggerLabel.STATIC_FILES), 'OK');
+    try {
+      this.app.use(express.static(path.join(process.cwd(), 'public')));
+      this.app.use(
+        '/' + config.get('uploadsDirectory'),
+        express.static(path.join(process.cwd(), config.get('uploadsDirectory'))),
+      );
+      logger.print(chalk.green(LoggerLabel.STATIC_FILES), 'OK');
 
-    return this;
+      return this;
+    } catch (error) {
+      logger.print(chalk.red(LoggerLabel.STATIC_FILES), (error as Error).message);
+      this.shutdown(true);
+      return this;
+    }
+  }
+
+  public shutdown(withError = false) {
+    if (withError) process.exit(1);
+    process.exit(0);
   }
 
   public setRouter(router: Router) {

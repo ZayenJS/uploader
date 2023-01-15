@@ -2,7 +2,7 @@ import path from 'path';
 import dotenv from 'dotenv';
 import { NodeEnv } from '../@types/enums/NodeEnv';
 import { UploadDirectoryNotSetError } from '../errors/UploadDirectoryNotSetError';
-import { Logger, logger, LoggerLabel } from '../services/logger';
+import { logger, LoggerLabel } from '../services/logger';
 import chalk from 'chalk';
 
 export interface ConfigEnv {
@@ -21,8 +21,20 @@ export interface ConfigEnv {
     };
     acceptedFileTypes: string[];
   };
+  logging: LoggingConfig;
 }
 
+export interface LoggingConfig {
+  save: Partial<{
+    custom: boolean;
+    error: boolean;
+    info: boolean;
+    warn: boolean;
+    debug: boolean;
+    log: boolean;
+    trace: boolean;
+  }>;
+}
 export interface MulterConfig {
   destination: string;
   limits: {
@@ -42,7 +54,7 @@ export interface CorsConfig {
   headers: string;
 }
 
-type GetConfigByKeyType = string | string[] | number | CorsConfig | MulterConfig;
+type GetConfigByKeyType = string | string[] | number | CorsConfig | MulterConfig | LoggingConfig;
 
 class Config {
   private _config: ConfigProps;
@@ -72,6 +84,17 @@ class Config {
       filesFieldName,
       serverPort,
       multer: multerConfig,
+      logging: {
+        save: {
+          custom: true,
+          error: true,
+          info: true,
+          warn: true,
+          debug: true,
+          log: true,
+          trace: true,
+        },
+      },
     };
 
     this._config = {
@@ -79,11 +102,21 @@ class Config {
         ...baseConfig,
         uploadsDirectory: process.env.UPLOAD_DIRECTORY,
         envFile: '.env.prod',
+        logging: {
+          ...baseConfig.logging,
+          save: {
+            ...baseConfig.logging.save,
+            debug: false,
+          },
+        },
       },
       development: {
         ...baseConfig,
-        uploadsDirectory: process.env.UPLOAD_DIRECTORY,
+        uploadsDirectory: process.env.UPLOAD_DIRECTORY ?? 'uploads',
         envFile: '.env',
+        logging: {
+          ...baseConfig.logging,
+        },
       },
     };
   }

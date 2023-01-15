@@ -6,12 +6,12 @@ services:
       dockerfile: Dockerfile.dev
     container_name: uploader
     expose:
-      - ${PORT}
+      - ${SERVER_PORT}
     volumes:
       - .:/app
       - /app/node_modules
     env_file:
       - '.env'
     ports:
-      - 35000:${PORT}
+      - ${SERVER_PORT}:${SERVER_PORT}
     restart: unless-stopped

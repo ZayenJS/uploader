@@ -6,11 +6,16 @@ import fsp from 'fs/promises';
 import path from 'path';
 
 export class UploadController extends BaseController {
-  public static uploadOne = async () => {
-    // if (!config.get<string>('uploadsDirectory')) {
-    //   return ErrorController.internalServerError('Uploads directory not set');
-    // }
+  public static get = async () => {
+    logger.print(chalk.cyanBright(LoggerLabel.UPLOAD_CONTROLLER), `Upload request received from ${this.getClientIp()}`);
+    const path = this.getParams<unknown>('path');
 
+    logger.debug(JSON.stringify(path));
+
+    return this.json({ message: 'Upload page' });
+  };
+
+  public static uploadOne = async () => {
     logger.print(chalk.cyanBright(LoggerLabel.UPLOAD_CONTROLLER), `Upload request received from ${this.getClientIp()}`);
 
     const file = this.getFiles(config.get('filesFieldName'));
@@ -18,10 +23,11 @@ export class UploadController extends BaseController {
     const newFileName = this.getBody<string>('name');
 
     if (!file) {
-      return this.json({ message: 'No files were uploaded' });
+      return this.json({ message: 'No files were sent to the server' }, 400);
     }
 
-    let newDestination = `${path.join(process.cwd(), 'uploads')}`;
+    const serverRoot = process.cwd();
+    let newDestination = `${path.join(serverRoot, config.get<string>('uploadsDirectory'))}`;
 
     if (folderName) {
       newDestination = `${newDestination}/${folderName}`;
@@ -30,15 +36,21 @@ export class UploadController extends BaseController {
     try {
       await fsp.access(newDestination);
     } catch (error) {
-      await fsp.mkdir(newDestination, { recursive: true });
+      await fsp.mkdir(newDestination, { recursive: true, mode: 0o777 });
       logger.print(chalk.green(LoggerLabel.UPLOADER), `Upload storage created: ${newDestination}`);
     }
 
     const extension = file.originalname.split('.').pop();
-    const newFilePath = `${newDestination}/${newFileName}.${extension}`;
+    const urlFriendlyFileName = (newFileName || file.originalname).replace(/\s/g, '-').replace(/[^a-zA-Z0-9-]/g, '');
+    const newFilePath = `${newDestination}/${urlFriendlyFileName}.${extension}`;
 
-    await fsp.rename(file.path, newFilePath);
+    try {
+      await fsp.rename(file.path, newFilePath);
+    } catch (error) {
+      return this.json({ message: 'File could not be uploaded' }, 500);
+    }
 
-    this.noContent();
+    const ownBaseUrl = this.req.protocol + '://' + this.req.get('host');
+    return this.json({ message: 'File uploaded successfully', path: newFilePath.replace(serverRoot, ownBaseUrl) }, 200);
   };
 }

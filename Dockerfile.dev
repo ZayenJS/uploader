@@ -16,5 +16,5 @@ ENV PATH /app/node_modules/.bin:$PATH
 
 RUN chown -R node:node .
 USER node
-EXPOSE 3000
+
 CMD [ "yarn", "dev" ]
